@@ -9,6 +9,7 @@ const country_map = require('./countries.js').data;
 const CHECK_CAPITAL_ACTION = 'verify_capital';
 const GIVE_UP_ACTION = 'give_up';
 const WELCOME_ACTION = 'input.welcome';
+const END_GAME_ACTION = 'end_game';
 // b. the parameters that are parsed from the intent
 const CAPITAL_ARGUMENT = 'capital';
 const NUM_QUESTIONS = 5;
@@ -88,6 +89,11 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
     app.tell(`Ok, here is the answer: The capital of ${country} is ${capital}.`);
   }
   actionMap.set(GIVE_UP_ACTION, giveUp);
+
+  function endGame (app) {
+    app.tell(`OK, thanks for playing!`)
+  }
+  actionMap.set(END_GAME_ACTION, endGame);
 
   app.handleRequest(actionMap);
 });
