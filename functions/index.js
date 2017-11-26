@@ -12,7 +12,6 @@ const WELCOME_ACTION = 'input.welcome';
 const END_GAME_ACTION = 'end_game';
 // b. the parameters that are parsed from the intent
 const CAPITAL_ARGUMENT = 'capital';
-const NUM_QUESTIONS = 5;
 
 // const CAPITAL_MAP = {
 //   'Australia': 'Canberra',
@@ -31,20 +30,41 @@ const initData = app => {
   let index = Math.floor(Math.random() * countries.length);
 
   const data = app.data;
-  if (!data.country) {
+  if (!data.isInitialized) {
+    data.isInitialized = true;
     data.country = Object.keys(country_map)[index];
+    data.numAsked = 0;
+    data.numCorrect = 0;
   }
   return data;
 };
+
+const incrQuestion = (app, isCorrect) => {
+  app.data.numAsked += 1;
+  if (isCorrect) {
+    app.data.numCorrect += 1;
+  }
+}
 
 const pickNewQuestion = app => {
   /** @type {AppData} */
   const countries = Object.keys(country_map);
   let index = Math.floor(Math.random() * countries.length);
   app.data.country = Object.keys(country_map)[index];
-  return app.data;
 }
 
+const numCorrectMsg = (numCorrect, numAsked) => {
+  return `You got ${numCorrect} of ${numAsked} questions right.`
+}
+
+const nextQuestionMsg = (app) => {
+  return `Now, what is the capital of ${app.data.country}?`
+}
+
+// TODO: incr question count in pass
+// TODO: clean up text in welcome message
+// TODO: print out score when passing
+// TODO: recognize any city answer, not just capitals
 exports.capitalGame = functions.https.onRequest((request, response) => {
   const app = new App({request, response});
   console.log('Request headers: ' + JSON.stringify(request.headers));
@@ -52,48 +72,51 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
 
 // c. The function that generates the silly name
   function verifyCapital (app) {
-    const data = initData(app);
-
     let guess = app.getArgument(CAPITAL_ARGUMENT);
     console.log("Guess was ", guess);
-    let country = data.country;
+    let country = app.data.country;
     let capital = country_map[country];
     let reply;
     if (guess === capital) {
       reply = `Correct, the capital of ${country} is ${capital}.`;
+      incrQuestion(app, true);
     } else {
       reply = `Sorry, that is incorrect. The capital of ${country} is ${capital}.`;
+      incrQuestion(app, false);
     }
-    const newData = pickNewQuestion(app);
-    reply += ` Now, what is the capital of ${newData.country}?`
+    pickNewQuestion(app);
+    reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
+    reply += ' ' + nextQuestionMsg(app);
     app.ask(reply);
-  }
-  // d. build an action map, which maps intent names to functions
-  let actionMap = new Map();
-  actionMap.set(CHECK_CAPITAL_ACTION, verifyCapital);
+  };
 
   function pickCountry (app) {
     const data = initData(app);
-    let desc = `Welcome to Capital Guesser. We'll ask you ${NUM_QUESTIONS}
-      questions about the capital of countries around the world. At the end,
-      we'll tell you the total number correct. Your first question is:
-      what is the capital of ${data.country}?`
+    let desc = `Welcome to Capital Guesser. We'll ask you
+      questions about the capital of countries around the world.
+      Your first question is: what is the capital of ${data.country}?`;
     app.ask(desc);
-  }
-  actionMap.set(WELCOME_ACTION, pickCountry);
+  };
 
   function giveUp (app) {
-    const data = initData(app);
-    let country = data.country;
+    let country = app.data.country;
     let capital = country_map[country];
-    app.tell(`Ok, here is the answer: The capital of ${country} is ${capital}.`);
-  }
-  actionMap.set(GIVE_UP_ACTION, giveUp);
+
+    let reply = `Ok, here is the answer: The capital of ${country} is ${capital}.`
+    pickNewQuestion(app);
+    reply += ' ' + nextQuestionMsg(app);
+    app.ask(reply);
+  };
 
   function endGame (app) {
-    app.tell(`OK, thanks for playing!`)
-  }
-  actionMap.set(END_GAME_ACTION, endGame);
+    const results = numCorrectMsg(app.data.numCorrect, app.data.numAsked);
+    app.tell(`OK, thanks for playing! ` + results)
+  };
 
-  app.handleRequest(actionMap);
+  app.handleRequest(new Map([
+    [CHECK_CAPITAL_ACTION, verifyCapital],
+    [WELCOME_ACTION, pickCountry],
+    [GIVE_UP_ACTION, giveUp],
+    [END_GAME_ACTION, endGame]
+  ]));
 });
