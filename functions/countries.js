@@ -246,5 +246,5 @@ export default {
     "Western Sahara": "El Aaiún",
     "Yemen": "Sanaá",
     "Zambia": "Lusaka",
-    "Zimbabwe": "Harare",
+    "Zimbabwe": "Harare"
 }
