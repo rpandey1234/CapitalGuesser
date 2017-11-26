@@ -61,9 +61,6 @@ const nextQuestionMsg = (app) => {
   return `Now, what is the capital of ${app.data.country}?`
 }
 
-// TODO: incr question count in pass
-// TODO: clean up text in welcome message
-// TODO: print out score when passing
 // TODO: recognize any city answer, not just capitals
 exports.capitalGame = functions.https.onRequest((request, response) => {
   const app = new App({request, response});
@@ -92,8 +89,8 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
 
   function pickCountry (app) {
     const data = initData(app);
-    let desc = `Welcome to Capital Guesser. We'll ask you
-      questions about the capital of countries around the world.
+    let desc = `Welcome to Capital Guesser. We'll ask you about country
+      capitals around the world.
       Your first question is: what is the capital of ${data.country}?`;
     app.ask(desc);
   };
@@ -103,7 +100,9 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
     let capital = country_map[country];
 
     let reply = `Ok, here is the answer: The capital of ${country} is ${capital}.`
+    incrQuestion(app, false);
     pickNewQuestion(app);
+    reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
     reply += ' ' + nextQuestionMsg(app);
     app.ask(reply);
   };
