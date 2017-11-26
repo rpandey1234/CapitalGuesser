@@ -3,19 +3,22 @@
 process.env.DEBUG = 'actions-on-google:*';
 const App = require('actions-on-google').DialogflowApp;
 const functions = require('firebase-functions');
+const country_map = require('./countries.js').data;
 
 // a. the action name from the Dialogflow intent
 const CHECK_CAPITAL_ACTION = 'verify_capital';
+const GIVE_UP_ACTION = 'give_up';
 const WELCOME_ACTION = 'input.welcome';
 // b. the parameters that are parsed from the intent
 const CAPITAL_ARGUMENT = 'capital';
+const NUM_QUESTIONS = 5;
 
-const CAPITAL_MAP = {
-  'Australia': 'Canberra',
-  'Ireland': 'Dublin',
-  'Thailand': 'Bangkok',
-  'Italy': 'Rome'
-}
+// const CAPITAL_MAP = {
+//   'Australia': 'Canberra',
+//   'Ireland': 'Dublin',
+//   'Thailand': 'Bangkok',
+//   'Italy': 'Rome'
+// }
 
 /**
  * Set up app.data for use in the action
@@ -23,12 +26,12 @@ const CAPITAL_MAP = {
  */
 const initData = app => {
   /** @type {AppData} */
-  const countries = Object.keys(CAPITAL_MAP);
+  const countries = Object.keys(country_map);
   let index = Math.floor(Math.random() * countries.length);
 
   const data = app.data;
   if (!data.country) {
-    data.country = Object.keys(CAPITAL_MAP)[index];
+    data.country = Object.keys(country_map)[index];
   }
   return data;
 };
@@ -45,13 +48,11 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
     let guess = app.getArgument(CAPITAL_ARGUMENT);
     console.log("Guess was ", guess);
     let country = data.country;
-    let capital = CAPITAL_MAP[country];
+    let capital = country_map[country];
     if (guess === capital) {
-      app.tell(`Correct, the capital of ${country} is ${capital}`);
+      app.ask(`Correct, the capital of ${country} is ${capital}. Now say another capital.`);
     } else {
-      app.tell('Sorry, that is incorrect');
-      // TODO: allow guess again
-
+      app.ask(`Sorry, that is incorrect. The capital of ${country} is ${capital}. Now say another capital.`);
     }
   }
   // d. build an action map, which maps intent names to functions
@@ -60,9 +61,21 @@ exports.capitalGame = functions.https.onRequest((request, response) => {
 
   function pickCountry (app) {
     const data = initData(app);
-    app.ask('What is the capital of ' + data.country + '?');
+    let desc = `Welcome to Capital Guesser. We'll ask you ${NUM_QUESTIONS}
+      questions about the capital of countries around the world. At the end,
+      we'll tell you the total number correct. Your first question is:
+      what is the capital of ${data.country}?`
+    app.ask(desc);
   }
   actionMap.set(WELCOME_ACTION, pickCountry);
+
+  function giveUp (app) {
+    const data = initData(app);
+    let country = data.country;
+    let capital = country_map[country];
+    app.tell(`Ok, here is the answer: The capital of ${country} is ${capital}.`);
+  }
+  actionMap.set(GIVE_UP_ACTION, giveUp);
 
   app.handleRequest(actionMap);
 });

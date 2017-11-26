@@ -1,4 +1,4 @@
-export default {
+exports.data = {
     "Abkhazia": "Sukhumi",
     "Afghanistan": "Kabul",
     "Akrotiri and Dhekelia": "Episkopi Cantonment",
