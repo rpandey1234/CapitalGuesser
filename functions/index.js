@@ -6,19 +6,16 @@ const functions = require('firebase-functions');
 const country_map = require('./countries.js').data;
 
 // a. the action name from the Dialogflow intent
-const CHECK_CAPITAL_ACTION = 'verify_capital';
-const GIVE_UP_ACTION = 'give_up';
-const WELCOME_ACTION = 'input.welcome';
-const END_GAME_ACTION = 'end_game';
-// b. the parameters that are parsed from the intent
-const CAPITAL_ARGUMENT = 'capital';
+const Actions = {
+  VERIFY_CAPITAL: 'verify_capital',
+  GIVE_UP: 'give_up',
+  WELCOME: 'input.welcome',
+  END_GAME: 'end_game',
+}
 
-// const CAPITAL_MAP = {
-//   'Australia': 'Canberra',
-//   'Ireland': 'Dublin',
-//   'Thailand': 'Bangkok',
-//   'Italy': 'Rome'
-// }
+const Arguments = {
+  CAPITAL: 'capital',
+}
 
 /**
  * Set up app.data for use in the action
@@ -37,7 +34,7 @@ const initData = app => {
     data.numCorrect = 0;
   }
   return data;
-};
+}
 
 const incrQuestion = (app, isCorrect) => {
   app.data.numAsked += 1;
@@ -61,61 +58,59 @@ const nextQuestionMsg = (app) => {
   return `Now, what is the capital of ${app.data.country}?`
 }
 
-// TODO: recognize any city answer, not just capitals
+function verifyCapital (app) {
+  let guess = app.getArgument(Arguments.CAPITAL);
+  console.log("Guess was ", guess);
+  let country = app.data.country;
+  let capital = country_map[country];
+  let reply;
+  if (guess === capital) {
+    reply = `Correct, the capital of ${country} is ${capital}.`;
+    incrQuestion(app, true);
+  } else {
+    reply = `Sorry, that is incorrect. The capital of ${country} is ${capital}.`;
+    incrQuestion(app, false);
+  }
+  pickNewQuestion(app);
+  reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
+  reply += ' ' + nextQuestionMsg(app);
+  app.ask(reply);
+}
+
+function welcome (app) {
+  const data = initData(app);
+  let desc = `Welcome to Capital Guesser. We'll ask you about country
+    capitals around the world.
+    Your first question is: what is the capital of ${data.country}?`;
+  app.ask(desc);
+}
+
+function giveUp (app) {
+  let country = app.data.country;
+  let capital = country_map[country];
+
+  let reply = `Ok, here is the answer: The capital of ${country} is ${capital}.`
+  incrQuestion(app, false);
+  pickNewQuestion(app);
+  reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
+  reply += ' ' + nextQuestionMsg(app);
+  app.ask(reply);
+}
+
+function endGame (app) {
+  const results = numCorrectMsg(app.data.numCorrect, app.data.numAsked);
+  app.tell(`OK, thanks for playing! ` + results)
+}
+
 exports.capitalGame = functions.https.onRequest((request, response) => {
   const app = new App({request, response});
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
 
-// c. The function that generates the silly name
-  function verifyCapital (app) {
-    let guess = app.getArgument(CAPITAL_ARGUMENT);
-    console.log("Guess was ", guess);
-    let country = app.data.country;
-    let capital = country_map[country];
-    let reply;
-    if (guess === capital) {
-      reply = `Correct, the capital of ${country} is ${capital}.`;
-      incrQuestion(app, true);
-    } else {
-      reply = `Sorry, that is incorrect. The capital of ${country} is ${capital}.`;
-      incrQuestion(app, false);
-    }
-    pickNewQuestion(app);
-    reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
-    reply += ' ' + nextQuestionMsg(app);
-    app.ask(reply);
-  };
-
-  function pickCountry (app) {
-    const data = initData(app);
-    let desc = `Welcome to Capital Guesser. We'll ask you about country
-      capitals around the world.
-      Your first question is: what is the capital of ${data.country}?`;
-    app.ask(desc);
-  };
-
-  function giveUp (app) {
-    let country = app.data.country;
-    let capital = country_map[country];
-
-    let reply = `Ok, here is the answer: The capital of ${country} is ${capital}.`
-    incrQuestion(app, false);
-    pickNewQuestion(app);
-    reply += ' ' + numCorrectMsg(app.data.numCorrect, app.data.numAsked);
-    reply += ' ' + nextQuestionMsg(app);
-    app.ask(reply);
-  };
-
-  function endGame (app) {
-    const results = numCorrectMsg(app.data.numCorrect, app.data.numAsked);
-    app.tell(`OK, thanks for playing! ` + results)
-  };
-
   app.handleRequest(new Map([
-    [CHECK_CAPITAL_ACTION, verifyCapital],
-    [WELCOME_ACTION, pickCountry],
-    [GIVE_UP_ACTION, giveUp],
-    [END_GAME_ACTION, endGame]
+    [Actions.WELCOME, welcome],
+    [Actions.VERIFY_CAPITAL, verifyCapital],
+    [Actions.GIVE_UP, giveUp],
+    [Actions.END_GAME, endGame]
   ]));
 });
