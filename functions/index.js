@@ -79,7 +79,7 @@ function verifyCapital (app) {
 
 function welcome (app) {
   const data = initData(app);
-  let desc = `Welcome to Capital Guesser. We'll ask you about country
+  let desc = `Welcome to World Capital Judge. We'll ask you about country
     capitals around the world.
     Your first question is: what is the capital of ${data.country}?`;
   app.ask(desc);
